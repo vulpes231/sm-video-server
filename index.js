@@ -11,9 +11,12 @@ app.use(express.urlencoded({ extended: false }));
 
 // Import the router
 const rootRouter = require("./routes/root");
+const processVideoRouter = require("./routes/processvid");
 
 // Mount the router
 app.use("/", rootRouter);
+
+app.use("/download", processVideoRouter);
 
 app.listen(PORT, () =>
 	console.log(`Server started on http://localhost:${PORT}`)
