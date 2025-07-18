@@ -2,15 +2,18 @@ require("dotenv").config();
 const express = require("express");
 const cors = require("cors");
 
-const PORT = 3000 || process.env.PORT;
+const PORT = process.env.PORT || 3000; // Fixed order - process.env.PORT first
 const app = express();
 
 app.use(cors({ origin: true }));
-
 app.use(express.json());
 app.use(express.urlencoded({ extended: false }));
 
-app.use("/", require("./routes/root"));
+// Import the router
+const rootRouter = require("./routes/root");
+
+// Mount the router
+app.use("/", rootRouter);
 
 app.listen(PORT, () =>
 	console.log(`Server started on http://localhost:${PORT}`)
