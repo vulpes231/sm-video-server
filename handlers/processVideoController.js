@@ -1,65 +1,92 @@
 const axios = require("axios");
-const fs = require("fs");
 const { exec } = require("child_process");
-const supportedPlatforms = ["facebook", "instagram", "x"];
+const express = require("express");
 
+// Add this new router for download proxy
+const downloadRouter = express.Router();
+
+// Modified processVideoController.js
 const processVideo = async (req, res) => {
 	const { url, platform } = req.body;
 
-	if (!url) return res.status(400).json({ message: "Video URL required!" });
-
 	try {
-		// Determine platform
-		const detectedPlatform = detectPlatform(url, platform);
+		const result = await getDownloadableUrl(url, platform, req.isMobile);
 
-		// Get download URL
-		const result = await getDownloadableUrl(url, detectedPlatform);
-
-		// For mobile-friendly response
 		res.status(200).json({
 			success: true,
-			platform: detectedPlatform,
 			downloadOptions: {
 				directUrl: result.directUrl,
-				proxyUrl: `/download/proxy?url=${encodeURIComponent(result.directUrl)}`, // Safer for mobile
+				// Change to use download endpoint instead of proxy
+				downloadUrl: `/download/file?url=${encodeURIComponent(
+					result.directUrl
+				)}&platform=${platform}`,
 				meta: result.meta,
 			},
-			userAgentHint: "On mobile, long-press the link or use the proxy URL",
+			...(req.isMobile && {
+				userAgentHint: "Long-press the download link",
+			}),
 		});
 	} catch (error) {
-		console.error("Mobile download error:", error);
+		console.error("Download error:", error);
 		res.status(500).json({
 			message: "Download failed",
-			mobileSpecificHint: "Try copying the link and opening in browser",
 			error: error.message,
 		});
 	}
 };
 
-function detectPlatform(url, specifiedPlatform) {
-	if (specifiedPlatform) return specifiedPlatform.toLowerCase();
+// New endpoint to force download
+downloadRouter.get("/file", async (req, res) => {
+	try {
+		const videoUrl = decodeURIComponent(req.query.url);
+		const platform = req.query.platform;
 
-	if (/instagram\.com|instagr\.am/i.test(url)) return "instagram";
-	if (/facebook\.com|fb\.watch/i.test(url)) return "facebook";
-	if (/twitter\.com|x\.com/i.test(url)) return "x";
+		// Set download headers
+		res.setHeader(
+			"Content-Disposition",
+			`attachment; filename="${platform}-video.mp4"`
+		);
+		res.setHeader("Content-Type", "video/mp4");
 
-	throw new Error("Unsupported URL");
-}
+		// Stream the video
+		const response = await axios.get(videoUrl, { responseType: "stream" });
+		response.data.pipe(res);
+	} catch (error) {
+		console.error("Download failed:", error);
+		res.status(500).send("Download failed");
+	}
+});
 
-// Mobile-optimized download handler
-async function getDownloadableUrl(url, platform) {
-	const isMobileUserAgent = /mobile|android|iphone|ipad/i.test(
-		req.headers["user-agent"]
-	);
-
-	if (isMobileUserAgent && platform === "instagram") {
+// Keep your existing helper functions
+async function getDownloadableUrl(url, platform, isMobile) {
+	if (isMobile && platform === "instagram") {
 		return await getMobileInstagramUrl(url);
 	}
-
 	return {
 		directUrl: await downloadWithYtDlp(url),
-		meta: { recommendedForMobile: false },
+		meta: { recommendedForMobile: isMobile },
 	};
 }
 
-module.exports = { processVideo, supportedPlatforms };
+async function getMobileInstagramUrl(url) {
+	const response = await axios.get(
+		`https://api.example.com/ig?url=${encodeURIComponent(url)}`
+	);
+	return {
+		directUrl: response.data.videoUrl,
+		meta: { isMobileOptimized: true },
+	};
+}
+
+async function downloadWithYtDlp(url) {
+	return new Promise((resolve, reject) => {
+		exec(`yt-dlp -g --no-check-certificate ${url}`, (error, stdout) => {
+			error ? reject(error) : resolve(stdout.trim());
+		});
+	});
+}
+
+module.exports = {
+	processVideo,
+	downloadRouter, // Export the new router
+};

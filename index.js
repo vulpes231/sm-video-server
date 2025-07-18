@@ -16,7 +16,7 @@ const processVideoRouter = require("./routes/processvid");
 // Mount the router
 app.use("/", rootRouter);
 
-app.use("/download", processVideoRouter);
+app.use("/process", processVideoRouter);
 
 app.listen(PORT, () =>
 	console.log(`Server started on http://localhost:${PORT}`)
