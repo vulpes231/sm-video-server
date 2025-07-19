@@ -15,7 +15,6 @@ const processVideoRouter = require("./routes/processvid");
 
 // Mount the router
 app.use("/", rootRouter);
-
 app.use("/process", processVideoRouter);
 
 app.listen(PORT, () =>

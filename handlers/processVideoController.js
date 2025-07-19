@@ -1,11 +1,6 @@
 const axios = require("axios");
 const { exec } = require("child_process");
-const express = require("express");
 
-// Add this new router for download proxy
-const downloadRouter = express.Router();
-
-// Modified processVideoController.js
 const processVideo = async (req, res) => {
 	const { url, platform } = req.body;
 
@@ -16,8 +11,7 @@ const processVideo = async (req, res) => {
 			success: true,
 			downloadOptions: {
 				directUrl: result.directUrl,
-				// Change to use download endpoint instead of proxy
-				downloadUrl: `/download/file?url=${encodeURIComponent(
+				downloadUrl: `/process/file?url=${encodeURIComponent(
 					result.directUrl
 				)}&platform=${platform}`,
 				meta: result.meta,
@@ -35,29 +29,6 @@ const processVideo = async (req, res) => {
 	}
 };
 
-// New endpoint to force download
-downloadRouter.get("/file", async (req, res) => {
-	try {
-		const videoUrl = decodeURIComponent(req.query.url);
-		const platform = req.query.platform;
-
-		// Set download headers
-		res.setHeader(
-			"Content-Disposition",
-			`attachment; filename="${platform}-video.mp4"`
-		);
-		res.setHeader("Content-Type", "video/mp4");
-
-		// Stream the video
-		const response = await axios.get(videoUrl, { responseType: "stream" });
-		response.data.pipe(res);
-	} catch (error) {
-		console.error("Download failed:", error);
-		res.status(500).send("Download failed");
-	}
-});
-
-// Keep your existing helper functions
 async function getDownloadableUrl(url, platform, isMobile) {
 	if (isMobile && platform === "instagram") {
 		return await getMobileInstagramUrl(url);
@@ -88,5 +59,4 @@ async function downloadWithYtDlp(url) {
 
 module.exports = {
 	processVideo,
-	downloadRouter, // Export the new router
 };
