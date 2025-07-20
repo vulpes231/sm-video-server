@@ -1,5 +1,5 @@
+const { getDownloadableUrl } = require("../utils/utils");
 const axios = require("axios");
-const { exec } = require("child_process");
 
 const processVideo = async (req, res) => {
 	const { url, platform } = req.body;
@@ -29,34 +29,36 @@ const processVideo = async (req, res) => {
 	}
 };
 
-async function getDownloadableUrl(url, platform, isMobile) {
-	if (isMobile && platform === "instagram") {
-		return await getMobileInstagramUrl(url);
+async function clientDownload(req, res) {
+	const { url } = req.query;
+	if (!url) {
+		return res.status(400).send("Missing URL");
 	}
-	return {
-		directUrl: await downloadWithYtDlp(url),
-		meta: { recommendedForMobile: isMobile },
-	};
-}
 
-async function getMobileInstagramUrl(url) {
-	const response = await axios.get(
-		`https://api.example.com/ig?url=${encodeURIComponent(url)}`
-	);
-	return {
-		directUrl: response.data.videoUrl,
-		meta: { isMobileOptimized: true },
-	};
-}
-
-async function downloadWithYtDlp(url) {
-	return new Promise((resolve, reject) => {
-		exec(`yt-dlp -g --no-check-certificate ${url}`, (error, stdout) => {
-			error ? reject(error) : resolve(stdout.trim());
+	try {
+		const response = await axios({
+			method: "get",
+			url,
+			headers: {
+				"User-Agent":
+					"Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/114.0.0.0 Safari/537.36",
+				Accept: "*/*",
+				Referer: "https://x.com/",
+			},
+			responseType: "stream",
 		});
-	});
+
+		res.setHeader("Content-Disposition", "attachment; filename=video.mp4");
+		res.setHeader("Content-Type", "video/mp4");
+
+		response.data.pipe(res);
+	} catch (error) {
+		console.error("Download proxy failed:", error.message);
+		res.status(500).send("Download failed");
+	}
 }
 
 module.exports = {
 	processVideo,
+	clientDownload,
 };
