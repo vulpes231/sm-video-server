@@ -1,13 +1,11 @@
 const { exec } = require("child_process");
+const axios = require("axios");
+const NodeCache = require("node-cache");
 
-async function getDownloadableUrl(url, platform, isMobile) {
-	if (isMobile && platform === "instagram") {
-		return await getMobileInstagramUrl(url);
-	}
-	return {
-		directUrl: await downloadWithYtDlp(url),
-		meta: { recommendedForMobile: isMobile },
-	};
+const videoCache = new NodeCache({ stdTTL: 3600 }); // Cache for 1 hour
+
+function normalizeTwitterUrl(url) {
+	return url.replace("x.com", "twitter.com");
 }
 
 async function getMobileInstagramUrl(url) {
@@ -21,8 +19,7 @@ async function getMobileInstagramUrl(url) {
 }
 
 async function downloadWithYtDlp(url) {
-	// Replace x.com with twitter.com
-	const normalizedUrl = url.replace("x.com", "twitter.com");
+	const normalizedUrl = normalizeTwitterUrl(url);
 
 	return new Promise((resolve, reject) => {
 		exec(
@@ -34,8 +31,48 @@ async function downloadWithYtDlp(url) {
 	});
 }
 
+async function getDownloadableUrl(url, platform, isMobile) {
+	const cacheKey = `${platform}:${url}`;
+	const cached = videoCache.get(cacheKey);
+
+	if (cached) {
+		console.log("✅ Cache hit for:", cacheKey);
+		return cached;
+	}
+
+	if (isMobile && platform === "instagram") {
+		const result = await getMobileInstagramUrl(url);
+		videoCache.set(cacheKey, result);
+		return result;
+	}
+
+	try {
+		const directUrl = await downloadWithYtDlp(url);
+		const result = {
+			directUrl,
+			meta: { from: "yt-dlp", recommendedForMobile: isMobile },
+		};
+		videoCache.set(cacheKey, result);
+		return result;
+	} catch (ytError) {
+		console.warn(
+			"⚠️ yt-dlp failed, falling back to direct proxy:",
+			ytError.message
+		);
+
+		const fallback = {
+			directUrl: normalizeTwitterUrl(url),
+			meta: { from: "fallback", recommendedForMobile: isMobile },
+		};
+		videoCache.set(cacheKey, fallback);
+		return fallback;
+	}
+}
+
 module.exports = {
 	getDownloadableUrl,
 	getMobileInstagramUrl,
 	downloadWithYtDlp,
+	normalizeTwitterUrl,
+	videoCache,
 };
