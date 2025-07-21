@@ -1,3 +1,5 @@
+const { apiLimiter } = require("../middlewares/rateLimit");
+
 const {
 	processVideo,
 	clientDownload,
@@ -7,7 +9,7 @@ const { validateVideoRequest } = require("../middlewares/validate");
 const express = require("express");
 const router = express.Router();
 
-router.post("/", validateVideoRequest, processVideo);
+router.post("/", apiLimiter, validateVideoRequest, processVideo);
 router.get("/file", clientDownload);
 
 module.exports = router;
