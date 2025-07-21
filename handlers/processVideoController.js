@@ -1,5 +1,6 @@
 const { getDownloadableUrl } = require("../utils/utils");
 const axios = require("axios");
+const { format } = require("date-fns");
 
 const processVideo = async (req, res) => {
 	const { url, platform } = req.body;
@@ -48,7 +49,10 @@ async function clientDownload(req, res) {
 			responseType: "stream",
 		});
 
-		res.setHeader("Content-Disposition", "attachment; filename=video.mp4");
+		res.setHeader(
+			"Content-Disposition",
+			`attachment; filename=${format(new Date(), "yyyy/mm/dd-hh/mm")}video.mp4`
+		);
 		res.setHeader("Content-Type", "video/mp4");
 
 		response.data.pipe(res);
