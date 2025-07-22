@@ -2,8 +2,11 @@ require("dotenv").config();
 const express = require("express");
 const cors = require("cors");
 
-const PORT = process.env.PORT || 3000; // Fixed order - process.env.PORT first
+const PORT = process.env.PORT || 3000;
 const app = express();
+
+// Configure Express to trust proxies (add this line)
+app.set("trust proxy", true); // <-- This is the key line to add
 
 app.use(cors({ origin: true }));
 app.use(express.json());
