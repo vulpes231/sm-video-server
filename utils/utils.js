@@ -23,9 +23,14 @@ async function downloadWithYtDlp(url) {
 
 	return new Promise((resolve, reject) => {
 		exec(
-			`yt-dlp -g --no-check-certificate ${normalizedUrl}`,
-			(error, stdout) => {
-				error ? reject(error) : resolve(stdout.trim());
+			`./yt-dlp -g --no-check-certificate "${normalizedUrl}"`, // Use ./yt-dlp instead of yt-dlp
+			(error, stdout, stderr) => {
+				if (error) {
+					console.error("yt-dlp error:", stderr);
+					reject(error);
+				} else {
+					resolve(stdout.trim());
+				}
 			}
 		);
 	});
