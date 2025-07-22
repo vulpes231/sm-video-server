@@ -21,9 +21,11 @@ async function getMobileInstagramUrl(url) {
 async function downloadWithYtDlp(url) {
 	const normalizedUrl = normalizeTwitterUrl(url);
 
+	const command = fs.existsSync("./yt-dlp") ? "./yt-dlp" : "yt-dlp";
+
 	return new Promise((resolve, reject) => {
 		exec(
-			`./yt-dlp -g --no-check-certificate "${normalizedUrl}"`, // Use ./yt-dlp instead of yt-dlp
+			`${command} -g --no-check-certificate "${normalizedUrl}"`,
 			(error, stdout, stderr) => {
 				if (error) {
 					console.error("yt-dlp error:", stderr);
